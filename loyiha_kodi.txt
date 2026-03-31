@@ -1,0 +1,347 @@
+
+
+==================================================
+FILE: .\.env
+==================================================
+
+PORT = 5000
+HOST = localhost
+BASE_URL = http://localhost:5000
+
+==================================================
+FILE: .\app.js
+==================================================
+
+require("dotenv").config()
+const express = require("express")
+const productRoutes = require("./routes/productRoutes")
+
+const app = express()
+
+app.use(express.json())
+
+app.use("/products", productRoutes)
+
+app.listen(process.env.PORT, () => {
+    console.log(`Server is running ${process.env.BASE_URL}`)
+})
+
+
+
+==================================================
+FILE: .\db.js
+==================================================
+
+const sqlite3 = require("sqlite3").verbose()
+
+const db = new sqlite3.Database("./db.db", (err) => {
+  if (err) {
+    console.log("DB xato:", err.message)
+  } else {
+    console.log("DB ulandi")
+  }
+})
+
+db.run(`
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  password TEXT NOT NULL,
+  role TEXT DEFAULT 'user'
+)
+`)
+
+db.run(`
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  price REAL NOT NULL,
+  category TEXT NOT NULL
+)
+`)
+
+db.run(`
+CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  product_id INTEGER NOT NULL,
+  quantity INTEGER NOT NULL,
+  FOREIGN KEY(user_id) REFERENCES users(id),
+  FOREIGN KEY(product_id) REFERENCES products(id)
+)
+`)
+
+module.exports = db
+
+==================================================
+FILE: .\package.json
+==================================================
+
+{
+  "name": "e-commerce",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/AzikoCodess/E-commerce#readme",
+  "bugs": {
+    "url": "https://github.com/AzikoCodess/E-commerce/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AzikoCodess/E-commerce.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
+
+
+==================================================
+FILE: .\controllers\orderController.js
+==================================================
+
+
+
+==================================================
+FILE: .\controllers\productController.js
+==================================================
+
+const serviceProduct = require("../services/productService")
+
+const createProduct = async (req, res) => {
+    try {
+        const { title, price, category } = req.body
+
+        if (!title || !price || !category) {
+            return res.status(400).json({
+                message: "title, price, category kerak"
+            })
+        }
+
+        const id = await serviceProduct.createProduct(title, price, category)
+
+        res.status(201).json({
+            message: "product created",
+            id, title, price, category
+        })
+
+
+    } catch (err) {
+        res.status(500).json({ message: err.message })
+
+    }
+}
+
+const getAllProducts = async (req, res) => {
+    try {
+        const products = await serviceProduct.getAllProducts()
+
+        res.status(200).json(products)
+
+    } catch (err) {
+        res.status(500).json({ message: err.message })
+
+    }
+}
+
+const getProductById = async (req, res) => {
+    try {
+        const { id } = req.params
+        const product = await serviceProduct.getProductById(id)
+
+        if (!product) {
+            return res.status(404).json({
+                message: "Product topilmadi"
+            })
+        }
+
+        res.status(200).json(getProduct)
+    } catch (err) {
+        res.status(500).json({ message: err.message })
+    }
+}
+
+const updateProduct = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { title, price, category } = req.body
+
+        const changes = await serviceProduct.updateProduct(id, title, price, category)
+        if (changes === 0) {
+            return res.status(404).json({
+                message: "product topilmadi"
+            })
+        }
+
+        res.status(200).json({
+            updated: changes
+        })
+
+    } catch (err) {
+        res.status(500).json({ message: err.message })
+    }
+}
+
+const deleteProduct = async (req, res) => {
+    try {
+        const { id } = req.params
+        const changes = serviceProduct.deleteProduct(id)
+        if (changes === 0) {
+            return res.status(404).json({ message: "Product topilmadi" })
+        }
+
+        res.status(200).json({
+            deleted: changes
+        })
+
+    } catch (err) {
+        res.status(500).json({ message: err.message })
+    }
+}
+
+module.exports = {
+    createProduct,
+    getAllProducts,
+    getProductById,
+    updateProduct,
+    deleteProduct
+}
+
+==================================================
+FILE: .\controllers\userController.js
+==================================================
+
+
+
+==================================================
+FILE: .\middleware\adminMiddleware.js
+==================================================
+
+
+
+==================================================
+FILE: .\middleware\authMiddleware.js
+==================================================
+
+
+
+==================================================
+FILE: .\routes\orderRoutes.js
+==================================================
+
+
+
+==================================================
+FILE: .\routes\productRoutes.js
+==================================================
+
+const express = require("express")
+const router = express.Router()
+const productController = require("../controllers/productController")
+
+router.post("/create", productController.createProduct)
+router.get("/allProcuts", productController.getAllProducts)
+router.get("/oneProduct/:id", productController.getProductById)
+router.put("/update/:id", productController.updateProduct)
+router.delete("/delete/:id", productController.deleteProduct)
+
+module.exports = router
+
+==================================================
+FILE: .\routes\userRoutes.js
+==================================================
+
+
+
+==================================================
+FILE: .\services\orderService.js
+==================================================
+
+
+
+==================================================
+FILE: .\services\productService.js
+==================================================
+
+const db = require("../db")
+
+const createProduct = (title, price, category) => {
+    return new Promise((resolve, reject) => {
+        const sql = `INSERT INTO products (title, price, category) VALUES (?, ?, ?)`
+
+        db.run(sql, [title, price, category], function (err) {
+            if (err) reject(err)
+            else resolve(this.lastID)
+        })
+    })
+}
+
+const getAllProducts = () => {
+    return new Promise((resolve, reject) => {
+        const sql = `SELECT * FROM products`
+
+        db.all(sql, [], (err, rows) => {
+            if (err) reject(err)
+            else resolve(rows)
+        })
+    })
+}
+
+const getProductById = (id) => {
+    return new Promise((resolve, reject) => {
+        const sql = `SELECT * FROM products WHERE id = ?`
+
+        db.get(sql, [id], (err, row) => {
+            err ? reject(err) : resolve(row)
+        })
+    })
+}
+
+const updateProduct = (id, title, price, category) => {
+    return new Promise((resolve, reject) => {
+        const sql = `
+        UPDATE products
+        SET title=?, price=?, category=?
+        WHERE id=?
+        `
+        db.run(sql, [title, price, category, id], function (err) {
+            err ? reject(err) : resolve(this.changes)
+        })
+    })
+}
+
+const deleteProduct = (id) => {
+    return new Promise((resolve, reject) => {
+        const sql = `DELETE FROM products WHERE id=?`
+
+        db.run(sql, [id], function (err) {
+            err ? reject(err) : resolve(this.changes)
+        })
+    })
+}
+
+module.exports = {
+    createProduct,
+    getAllProducts,
+    getProductById,
+    updateProduct,
+    deleteProduct
+}
+
+==================================================
+FILE: .\services\userService.js
+==================================================
+
